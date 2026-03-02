@@ -1,0 +1,24 @@
+name: Smoke
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: p6m7g8-actions/checkout@main
+
+      - name: Run gh-token-normalize action
+        id: token
+        uses: ./
+        with:
+          preferred-token: ${{ github.token }}
+          fallback-token: ${{ github.token }}
+          default-token: ${{ github.token }}
+
+      - name: Assert output exists
+        shell: bash
+        run: |
+          test -n "${{ steps.token.outputs.value }}"

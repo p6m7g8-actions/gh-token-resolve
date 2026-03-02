@@ -1,0 +1,69 @@
+name: P6 GitHub token normalize
+description: Normalize and validate GitHub tokens, returning one canonical token
+
+inputs:
+  preferred-token:
+    description: First-choice token
+    required: false
+  fallback-token:
+    description: Second-choice token
+    required: false
+  default-token:
+    description: Third-choice token (typically github.token)
+    required: false
+  validate-url:
+    description: API endpoint used to validate token auth
+    required: false
+    default: https://api.github.com/user
+
+outputs:
+  value:
+    description: Normalized, selected token value
+    value: ${{ steps.pick.outputs.value }}
+  source:
+    description: Which input won (preferred|fallback|default|none)
+    value: ${{ steps.pick.outputs.source }}
+
+runs:
+  using: composite
+  steps:
+    - name: Select token
+      id: pick
+      shell: bash
+      env:
+        PREFERRED_TOKEN: ${{ inputs.preferred-token }}
+        FALLBACK_TOKEN: ${{ inputs.fallback-token }}
+        DEFAULT_TOKEN: ${{ inputs.default-token }}
+        VALIDATE_URL: ${{ inputs.validate-url }}
+      run: |
+        sanitize() {
+          local t="$1"
+          t="${t#https://x-access-token:}"
+          t="${t#x-access-token:}"
+          t="${t%@github.com*}"
+          printf '%s' "$t"
+        }
+
+        auth_ok() {
+          local t="$1"
+          [[ -n "$t" ]] || return 1
+          curl -fsS -H "Authorization: Bearer ${t}" "${VALIDATE_URL}" >/dev/null
+        }
+
+        preferred="$(sanitize "${PREFERRED_TOKEN}")"
+        fallback="$(sanitize "${FALLBACK_TOKEN}")"
+        def="$(sanitize "${DEFAULT_TOKEN}")"
+
+        if auth_ok "${preferred}"; then
+          echo "value=${preferred}" >> "$GITHUB_OUTPUT"
+          echo "source=preferred" >> "$GITHUB_OUTPUT"
+        elif auth_ok "${fallback}"; then
+          echo "value=${fallback}" >> "$GITHUB_OUTPUT"
+          echo "source=fallback" >> "$GITHUB_OUTPUT"
+        elif auth_ok "${def}"; then
+          echo "value=${def}" >> "$GITHUB_OUTPUT"
+          echo "source=default" >> "$GITHUB_OUTPUT"
+        else
+          echo "value=${def}" >> "$GITHUB_OUTPUT"
+          echo "source=none" >> "$GITHUB_OUTPUT"
+        fi
