@@ -11,10 +11,6 @@ inputs:
   default-token:
     description: Third-choice token (typically github.token)
     required: false
-  validate-url:
-    description: API endpoint used to validate token auth
-    required: false
-    default: https://api.github.com/user
 
 outputs:
   value:
@@ -34,7 +30,6 @@ runs:
         PREFERRED_TOKEN: ${{ inputs.preferred-token }}
         FALLBACK_TOKEN: ${{ inputs.fallback-token }}
         DEFAULT_TOKEN: ${{ inputs.default-token }}
-        VALIDATE_URL: ${{ inputs.validate-url }}
       run: |
         sanitize() {
           local t="$1"
@@ -44,26 +39,20 @@ runs:
           printf '%s' "$t"
         }
 
-        auth_ok() {
-          local t="$1"
-          [[ -n "$t" ]] || return 1
-          curl -fsS -H "Authorization: Bearer ${t}" "${VALIDATE_URL}" >/dev/null
-        }
-
         preferred="$(sanitize "${PREFERRED_TOKEN}")"
         fallback="$(sanitize "${FALLBACK_TOKEN}")"
         def="$(sanitize "${DEFAULT_TOKEN}")"
 
-        if auth_ok "${preferred}"; then
+        if [[ -n "${preferred}" ]]; then
           echo "value=${preferred}" >> "$GITHUB_OUTPUT"
           echo "source=preferred" >> "$GITHUB_OUTPUT"
-        elif auth_ok "${fallback}"; then
+        elif [[ -n "${fallback}" ]]; then
           echo "value=${fallback}" >> "$GITHUB_OUTPUT"
           echo "source=fallback" >> "$GITHUB_OUTPUT"
-        elif auth_ok "${def}"; then
+        elif [[ -n "${def}" ]]; then
           echo "value=${def}" >> "$GITHUB_OUTPUT"
           echo "source=default" >> "$GITHUB_OUTPUT"
         else
-          echo "value=${def}" >> "$GITHUB_OUTPUT"
+          echo "value=" >> "$GITHUB_OUTPUT"
           echo "source=none" >> "$GITHUB_OUTPUT"
         fi
