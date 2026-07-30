@@ -39,9 +39,23 @@ runs:
           printf '%s' "$t"
         }
 
+        # Sanitizing mutates the secret, so the value GitHub registered for log
+        # masking no longer matches. Re-register every sanitized candidate with
+        # the runner before it is written anywhere.
+        mask() {
+          local t="$1"
+          if [[ -n "${t}" ]]; then
+            echo "::add-mask::${t}"
+          fi
+        }
+
         preferred="$(sanitize "${PREFERRED_TOKEN}")"
         fallback="$(sanitize "${FALLBACK_TOKEN}")"
         def="$(sanitize "${DEFAULT_TOKEN}")"
+
+        mask "${preferred}"
+        mask "${fallback}"
+        mask "${def}"
 
         if [[ -n "${preferred}" ]]; then
           echo "value=${preferred}" >> "$GITHUB_OUTPUT"
