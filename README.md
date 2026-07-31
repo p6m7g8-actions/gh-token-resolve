@@ -8,7 +8,7 @@
 ```yml
     - name: Normalize GitHub token
       id: token
-      uses: p6m7g8-actions/gh-token-normalize@main
+      uses: p6m7g8-actions/gh-token-resolve@main
       with:
         preferred-token: ${{ inputs.git_token }}
         fallback-token: ${{ inputs.gh_token }}
